@@ -2,8 +2,8 @@ import csv
 import getopt
 import sys
 import os
-
 import numpy as np
+import pandas as pd
 
 def vec_max(vector):
     vec_max = 0
@@ -50,6 +50,21 @@ def lcs(x, y):
     lcs = lcs[::-1]
     return lcs
 
+def is_number(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
+def vecs_on_csv(resultPath, vector):
+    # writing out the features learned by the model on a csv file
+    dataFrame = pd.DataFrame(data=vector[0:][0:],
+                      index=[i for i in range(vector.shape[0])],
+                      columns=['f' + str(i) for i in range(vector.shape[1])])
+    dataFrame.to_csv(resultPath)
+    return
+
 def csv_to_array(pool_cv, target_cv):
     f_pool_cv = open(pool_cv, 'r')
     vector_pool = csv.reader(f_pool_cv)
@@ -68,12 +83,12 @@ def get_sim_vectors(vector_pool, target_vector):
 
 def main(argv):
     try:
-        opts, args = getopt.getopt(argv[1:], "h:g:t:r:", ["help", "gumtreeVector", "target", "resultpath"])
+        opts, args = getopt.getopt(argv[1:], "h:g:t:", ["help", "gumtreeVector", "target"])
     except getopt.GetoptError as err:
         print(err)
         sys.exit(2)
-    gumtreeVector = "./gumtreeVector.csv"
-    targetVector = "./target.csv"
+    gumtreeVector = ''
+    targetVector = ''
     resultpath = ''
     for o, a in opts:
         if o in ("-H", "--help") or o in ("-h", "--hash"):
@@ -83,16 +98,19 @@ def main(argv):
             targetVector = a
         elif o in ("-g", "--gumtreeVector"):
             gumtreeVector = a
-        elif o in ("-r", "--resultpath"):
-            resultpath = a
         else:
             assert False, "unhandled option"
 
     root = os.getcwd()
     target_dir = root+"/target"
     result_dir = root+"/result"
+    
+    targetVector = target_dir+targetVector
 
     vector_pool, target = csv_to_array(gumtreeVector, targetVector)
+
+    vecs_on_csv(vector_pool)
+    vecs_on_csv(target)
 
 if __name__ == '__main__':
     main(sys.argv)
