@@ -1,4 +1,4 @@
 cd ./result
-del *.csv
+rm *.csv
 cd ..
-python ./main.py -g gumtreeVector.csv -t testVector.csv -r 60
+python3 ./main.py -g gumtreeVector.csv -t testVector.csv -r 60
