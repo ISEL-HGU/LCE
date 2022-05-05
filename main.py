@@ -6,24 +6,7 @@ import numpy as np
 import pandas as pd
 from keras.preprocessing.sequence import pad_sequences
 
-def vec_max(vector):
-    vec_max = 0
-    for i in range(len(vector)):
-        if vec_max < len(vector[i]):
-            vec_max = len(vector[i])
-    return vec_max
-
-def apply_zero_padding(vector):
-    vector_size = vec_max(vector)
-    for i in range(len(vector)):
-        for j in range(len(vector[i])):
-            if vector[i][j] == '':
-                vector[i][j] = 0
-            else:
-                vector[i][j] = int(vector[i][j])
-        for j in (vector_size - len(vector[i])):
-            vector[i].append(0)
-
+# find longest common subsequence of target vector within vector pool
 def lcs(vector_pool, target_vector):
     len_vp = len(vector_pool)
     # print("[debug.log] length vector pool = %d"% (len_vp))
@@ -61,13 +44,24 @@ def lcs_algo(vector_pool, target_vector, len_vp, len_tv):
             j -= 1
     return result_vector
 
-def vecs_on_csv(resultPath, vector):
-    # writing out the features learned by the model on a csv file
+# write in result path the given vector list as csv file
+def array2d_to_csv(resultPath, vector):
+    vector_arr = np.array(vector)
+    for each in vector_arr:
+        print(f"[debug.log] each line = {each}")
+    with open(resultPath, 'w', newline='') as file:
+        csv_writer = csv.writer(file, delimiter=',')
+        csv_writer.writerows(vector_arr)
+
+# write in result path the given vector list as csv file
+def array1d_to_csv(resultPath, vector):
     vector_arr = np.array(vector)
     with open(resultPath, 'w', newline='') as file:
         csv_writer = csv.writer(file, delimiter=',')
         csv_writer.writerow(vector_arr)
+        
 
+# get pool csv file and target csv file as array.
 def csv_to_array(pool_cv, target_cv):
     f_pool_cv = open(pool_cv, 'r')
     vector_pool = csv.reader(f_pool_cv)
@@ -79,22 +73,49 @@ def csv_to_array(pool_cv, target_cv):
 
     return vector_pool, target
 
+# remove trailing commas at the end of each row of csv files
 def trim_on_array(vector):
     trimed = list()
     for i in range(len(vector)):
         trimed.append(list(vector[i][:-1]))
     return trimed
 
-def lcs_extract(vector_pool, targetVector):
+# return result list of lcs length of each row from vector pool
+def lcs_count(vector_pool, targetVector):
     result_list = list()
-    max_lcs_size = 0
     for i in range(len(vector_pool)):
         lcs_result = lcs(vector_pool[i], targetVector)
         # print("[debug.log] lcs result #%d = %s" %(i, lcs_result))
-        if max_lcs_size < len(lcs_result):
-            max_lcs_size = len(lcs_result)
         result_list.append(len(lcs_result))
-    return result_list, max_lcs_size
+    return result_list
+
+# gumtreeVector.csv.trimed, lcs_count_list.csv, max = 7, result_pool_size = 60
+def lcs_extract(vector_pool, lcs_count_list, max_lcs_size, result_pool_size):
+    result_list = list()
+    result_index_list = list()
+    lcs_count_index_dict = dict()
+    for lcs_list_index in range(len(lcs_count_list)):
+        lcs_count_index_dict.setdefault(lcs_count_list[lcs_list_index], []).append(lcs_list_index)
+        
+    target_index = max_lcs_size
+    result_pool_size_iter = result_pool_size
+    while result_pool_size_iter > 0:
+        result_pool_size_iter -= len(lcs_count_index_dict[target_index])
+        if(result_pool_size_iter > 0):
+            target_index -= 1
+    for i in range(max_lcs_size, target_index-1,-1):
+        result_index_list.extend(lcs_count_index_dict[i])
+
+    print(f"[debug.log] result pool size = {result_pool_size}")
+    print(f"[debug.log] result index list size = {len(result_index_list)}")
+    print(f"[debug.log] error rate = {(len(result_index_list) / result_pool_size - 1)*100:.2f}%")
+    result_index_list.sort()
+    
+    for index in range(len(result_index_list)):
+        result_list.append(vector_pool[result_index_list[index]])
+
+    return result_list
+
 
 def main(argv):
     try:
@@ -132,18 +153,26 @@ def main(argv):
         result_size = int(len(vector_pool) / 10)
     target = list(target[0])
     
-    result_vector, max_lcs_size = lcs_extract(vector_pool, target)
-    meta_result = dict()
+    lcs_count_list = lcs_count(vector_pool, target)
+    # length of longest common subsequence
+    max_lcs_size = max(lcs_count_list)
+    meta_lcs_count = dict()
     for i in range(max_lcs_size+1):
-        meta_result[i] = result_vector.count(i)
+        meta_lcs_count[i] = lcs_count_list.count(i)
     
-    print("[debug.log] meta result:")
-    print(meta_result.items())
+    print("[debug.log] meta result count:")
+    print(meta_lcs_count.items())
 
-    print("[debug.log] result:")
-    print(result_vector)
+    print("[debug.log] LCS count list:")
+    print(lcs_count_list)
 
-    vecs_on_csv(result_dir+"result_vector.csv", result_vector)
+    array1d_to_csv(result_dir+"lcs_count_list.csv", lcs_count_list)
+    result_pool = lcs_extract(vector_pool, lcs_count_list, max_lcs_size, 60)
+
+    print("[debug.log] result pool")
+    print(result_pool)
+    
+    array2d_to_csv(result_dir+"resultPool.csv", result_pool)
 
 if __name__ == '__main__':
     main(sys.argv)
