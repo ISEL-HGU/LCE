@@ -47,15 +47,15 @@ def lcs_algo(vector_pool, target_vector, len_vp, len_tv):
 # write in result path the given vector list as csv file
 def array2d_to_csv(resultPath, vector):
     vector_arr = np.array(vector)
-    for each in vector_arr:
-        print(f"[debug.log] each line = {each}")
+    # for each in vector_arr:
+    #     print(f"[debug.log] each line = {each}")
     with open(resultPath, 'w', newline='') as file:
         csv_writer = csv.writer(file, delimiter=',')
         csv_writer.writerows(vector_arr)
 
 # write in result path the given vector list as csv file
 def array1d_to_csv(resultPath, vector):
-    vector_arr = np.array(vector)
+    vector_arr = np.array(vector,dtype=np.int32)
     with open(resultPath, 'w', newline='') as file:
         csv_writer = csv.writer(file, delimiter=',')
         csv_writer.writerow(vector_arr)
@@ -169,8 +169,8 @@ def main(argv):
     array1d_to_csv(result_dir+"lcs_count_list.csv", lcs_count_list)
     result_pool = lcs_extract(vector_pool, lcs_count_list, max_lcs_size, 60)
 
-    print("[debug.log] result pool")
-    print(result_pool)
+    # print("[debug.log] result pool")
+    # print(result_pool)
     
     array2d_to_csv(result_dir+"resultPool.csv", result_pool)
 
