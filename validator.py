@@ -33,10 +33,14 @@ def main(argv):
         else:
             assert False, "unhandled option"
 
-    pool_dir = "./pool/"
     result_dir = "./result/"
+    pool_dir = "./pool/"
 
+    file = result_dir + file
+    git_dir = pool_dir + gitdir
 
+    result_array = csv_to_array(file)
+    
 
 if __name__ == '__main__':
     main(sys.argv)

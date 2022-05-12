@@ -177,7 +177,7 @@ def main(argv):
         else:
             assert False, "unhandled option"
 
-    target_dir = "./target2/"
+    target_dir = "./target/"
     result_dir = "./result/"
     
     
