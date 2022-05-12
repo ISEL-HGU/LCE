@@ -5,6 +5,10 @@ if [ -f "*.csv" ]; then
    rm *.csv
 fi
 
+if [ -f "*.txt" ]; then
+   rm *.txt
+fi
+
 if [ -d "pool" ]; then
    echo "pool already exists"
 else

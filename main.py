@@ -126,14 +126,20 @@ def lcs_extract(vector_pool, lcs_count_list, max_lcs_size, result_pool_size):
     result_pool_size_iter = result_pool_size
     while result_pool_size_iter > 0:
         if target_index in lcs_count_index_dict:
-            print(f"[debug.log] iterating LCS score = {(target_index / max_lcs_size) * 100:.2f}% ...")
+            print(f"[debug.log] iterating LCS score ({target_index}/{max_lcs_size}) = {(target_index / max_lcs_size) * 100:.2f}% ...")
             result_pool_size_iter -= len(lcs_count_index_dict[target_index])
         if(result_pool_size_iter > 0):
             target_index -= 1
+    
     for i in range(max_lcs_size, target_index-1,-1):
         if i in lcs_count_index_dict:
+            if ((len(result_index_list) + len(lcs_count_index_dict[i])) / result_pool_size - 1) >= 1.5:
+                # limited the error rate top margin to 150 %
+                print(f"[debug.log] Warning: break due to too large error rate")
+                break
             result_index_list.extend(lcs_count_index_dict[i])
-    print(f"[debug.log] max LCS score = {(max_lcs_size / max_lcs_size) * 100:.2f}%")
+    
+    print(f"[debug.log] collected max LCS score = {(max_lcs_size / max_lcs_size) * 100:.2f}%")
     print(f"[debug.log] collected minimum LCS score = {(target_index / max_lcs_size) * 100:.2f}%")
     print(f"[debug.log] target result pool size = {result_pool_size}")
     print(f"[debug.log] result index list size = {len(result_index_list)}")
