@@ -138,7 +138,7 @@ def lcs_extract(vector_pool, lcs_count_list, max_lcs_size, result_pool_size):
     print(f"[debug.log] target result pool size = {result_pool_size}")
     print(f"[debug.log] result index list size = {len(result_index_list)}")
     print(f"[debug.log] error rate = {(len(result_index_list) / result_pool_size - 1)*100:.2f}%")
-    result_index_list.sort()
+    # result_index_list.sort()
     
     for index in range(len(result_index_list)):
         result_list.append(vector_pool[result_index_list[index]])

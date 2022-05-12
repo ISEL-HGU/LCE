@@ -1,3 +1,4 @@
+@echo off
 rem cd LAS
 rem mvn clean package
 
@@ -5,5 +6,8 @@ rem java -cp ./LAS/target/LAS-0.0.1-SNAPSHOT.jar main.LAS C:/repository/fv4202/p
 rem cd ..
 cd ./result
 del *.csv
+cd ..
+cd ./pool
+git clone https://github.com/Grasscutters/Grasscutter
 cd ..
 python ./main.py -g Grasscutter_vector.csv -c Grasscutter_file_commit.csv -t testVector.csv
