@@ -29,8 +29,8 @@ def top_n_to_diffs(commit_id_before_list, commit_id_after_list, file_path_before
     for i in range(n):
         if file_path_before_list[i] == file_path_after_list[i]:
             try:
-                call(f"cd {git_dir}\ngit diff --output={pwd}\\result\\diff_{i+1}.txt {commit_id_before_list[i]} {commit_id_after_list[i]} {file_path_before_list[i]} >> result_{i+1}.txt",shell=True)
-                print(f"\n[execution.log] cd {git_dir}\n[execution.log] git diff {commit_id_before_list[i]} {commit_id_after_list[i]} {file_path_before_list[i]} > {pwd}\\result\\diff_{i+1}.txt")
+                call(f"cd {git_dir}\ngit diff --output={pwd}\\result\\diff_{i+1}.txt {commit_id_before_list[i]} {commit_id_after_list[i]} {file_path_before_list[i]}",shell=True)
+                print(f"\n[execution.log] cd {git_dir}\n[execution.log] git diff --output={pwd}\\result\\diff_{i+1}.txt {commit_id_before_list[i]} {commit_id_after_list[i]} {file_path_before_list[i]}")
             except:
                 print(f"[debug.log] exception occured: {sys.exc_info()[0]}")
         else:
