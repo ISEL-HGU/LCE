@@ -23,9 +23,10 @@ def int_array_equal(a, b):
         if int(a[i]) != int(b[i]):
             return False
     return True
-
+# Longest Common Sequence algorithm
 def lcs_algo(vector_pool, target_vector, len_vp, len_tv):
-    L = [[0 for x in range(len_tv+1)] for x in range(len_vp+1)]
+    score = 1
+    L = [[0 for x in range(len_tv+1)] for y in range(len_vp+1)]
     for i in range(len_vp+1):
         for j in range(len_tv+1):
             if i == 0 or j == 0:
@@ -39,9 +40,9 @@ def lcs_algo(vector_pool, target_vector, len_vp, len_tv):
 
     result_vector = [0] * (index+1)
     result_vector[index] = 0
-
     i = len_vp
     j = len_tv
+    dropped_sequence_length_list = [0 for _ in range(index+1)]
     while i > 0 and j > 0:
         if vector_pool[i-1] == target_vector[j-1]:
             result_vector[index-1] = vector_pool[i-1]
@@ -49,10 +50,25 @@ def lcs_algo(vector_pool, target_vector, len_vp, len_tv):
             j -= 1
             index -= 1
         elif L[i-1][j] > L[i][j-1]:
+            dropped_sequence_length_list[index] += 1
             i -= 1
         else:
             j -= 1
-    return result_vector
+    if result_vector[len(result_vector)-1]==0:
+        result_vector = result_vector[:-1]
+    dropped_sequence_length_list.pop(0)
+    if len(dropped_sequence_length_list) != 0:
+        dropped_sequence_length_list.pop() # n_i in range n_1 to n_m-1
+
+    score = 1 * len(result_vector) / len_tv # score = 1 * k / k_max
+    print(f"[debug.log] score = 1 * {len(result_vector)} / {len_tv} = {score}")
+    print(f"[debug.log] target vector = {target_vector}")
+    print(f"[debug.log] pool vector = {vector_pool}")
+    if(len_vp - len(result_vector) > 0):
+        score -= sum(dropped_sequence_length_list) / (len_vp - len(result_vector)) # score -= sum(dropped_sequence_length_list) / (N - k)
+        print(f"[debug.log] score -= {sum(dropped_sequence_length_list)} / {(len_vp - len(result_vector))} = {score}")
+
+    return result_vector, score
 
 # write in result path the given vector list as csv file
 def array2d_to_csv(resultPath, vector):
@@ -75,72 +91,96 @@ def array1d_to_csv(resultPath, vector):
 def csv_to_array(pool_cv):
     f_pool_cv = open(pool_cv, 'r')
     vector_pool = csv.reader(f_pool_cv)
-
     vector_pool = np.asarray(list(vector_pool))
     return vector_pool
 
 # remove trailing commas at the end of each row of csv files
 def remove_trailing_commas(vector):
-    trimed = list()
+    trimmed = list()
     for i in range(len(vector)):
-        trimed.append(list(vector[i][:-1]))
-    return trimed
+        if len(vector[i]) != 0:
+            vector[i] = np.delete(vector[i], len(vector[i])-1)
+        else:
+            vector[i] = []
+        trimmed.append(vector[i])
+    return trimmed
 
 # remove empty new lines in change vector array and meta vector array
-def remove_empty_line(vector, metavector, index):
-    del vector[index]
-    np.delete(metavector, index, axis=None)
+def remove_empty_line(vector, metavector):
+    target = np.where(vector.size <= 0)
+    print(f"[debug.log] removing empty line ... vector[target] = {vector[target]}")
+   
+    np.delete(vector, target, axis=None)
+    # np.delete(vector, index, axis=None)
+    print(f"[debug.log] removing empty line ... metavector[target] = {metavector[target]}")
+    np.delete(metavector, target, axis=None)
+    # np.delete(metavector, index, axis=None)
 
 # locate empty new lines in change vector array and meta vector file array
-def locate_empty_line(vector):
-    empty_line_index_list = list()
+def locate_nearest_empty_line(vector):
+    # np.where(, 0, vector)
     for i in range(len(vector)):
         if len(vector[i]) <= 0:
-            empty_line_index_list.append(i)
-    return empty_line_index_list
+            return i
 
 # locate and remove empty lines in change vector array and meta vector array
 def clean_change_vector(vector_pool, metavector):
-    empty_line_index_list = locate_empty_line(vector_pool)
-    for i in range(len(empty_line_index_list)):
-        remove_empty_line(vector_pool, metavector, empty_line_index_list[i]-i)
+    remove_empty_line(vector_pool, metavector)
+    # for i in range(len(vector_pool)):
+    #     if i == len(vector_pool):
+    #         break
+    #     locate_nearest_empty_line(vector_pool)
+        
 
 # return result list of lcs length of each row from vector pool
-def lcs_count(vector_pool, targetVector):
+def lcs_count(processed_vector_pool, targetVector):
     result_list = list()
-    for i in range(len(vector_pool)):
-        lcs_result = lcs(vector_pool[i], targetVector)
-        # print("[debug.log] lcs result #%d = %s" %(i, lcs_result))
-        result_list.append(len(lcs_result))
+    for i in range(len(processed_vector_pool)):
+        lcs_result, lcs_score = lcs(processed_vector_pool[i], targetVector)
+        if lcs_score == 1:
+            print(f"[debug.log] lcs result {i} = {lcs_result}")
+        lcs_score = int(lcs_score*100)
+        result_list.append(lcs_score)
     return result_list
 
 # gumtreeVector.csv.trimed, lcs_count_list.csv, max = size of target cv, result_pool_size = 10% of size
-def lcs_extract(vector_pool, lcs_count_list, max_lcs_size, result_pool_size):
+def lcs_extract(vector_pool, lcs_count_list, result_pool_size):
     result_list = list()
     result_index_list = list()
     lcs_count_index_dict = dict()
+    max_score = 0.00
+    min_score = 100.00
+    flag = False
     for lcs_list_index in range(len(lcs_count_list)):
         lcs_count_index_dict.setdefault(lcs_count_list[lcs_list_index], []).append(lcs_list_index)
         
-    target_index = max_lcs_size
+    target_score = 100
     result_pool_size_iter = result_pool_size
     while result_pool_size_iter > 0:
-        if target_index in lcs_count_index_dict:
-            print(f"[debug.log] iterating LCS score ({target_index}/{max_lcs_size}) = {(target_index / max_lcs_size) * 100:.2f}% ...")
-            result_pool_size_iter -= len(lcs_count_index_dict[target_index])
+        if target_score in lcs_count_index_dict:
+            if max_score < target_score: max_score = target_score
+            if min_score > target_score: min_score = target_score
+            print(f"[debug.log] iterating LCS score = {target_score}% ...")
+            result_pool_size_iter -= len(lcs_count_index_dict[target_score])
         if(result_pool_size_iter > 0):
-            target_index -= 1
-    
-    for i in range(max_lcs_size, target_index-1,-1):
+            target_score -= 1
+    trail = 100
+    for i in range(100, target_score-1,-1):
         if i in lcs_count_index_dict:
             if ((len(result_index_list) + len(lcs_count_index_dict[i])) / result_pool_size - 1) >= 1.5:
                 # limited the error rate top margin to 150 %
                 print(f"[debug.log] Warning: break due to too large error rate")
+                flag = True
                 break
             result_index_list.extend(lcs_count_index_dict[i])
+            trail = i
     
-    print(f"[debug.log] collected max LCS score = {(max_lcs_size / max_lcs_size) * 100:.2f}%")
-    print(f"[debug.log] collected minimum LCS score = {(target_index / max_lcs_size) * 100:.2f}%")
+    print(f"[debug.log] collected maximum LCS score = {max_score:.2f}%")
+    if flag:
+        print(f"[debug.log] collected minimum LCS score = {trail:.2f}%")
+    else:    
+        print(f"[debug.log] collected minimum LCS score = {min_score:.2f}%")
+
     print(f"[debug.log] target result pool size = {result_pool_size}")
     print(f"[debug.log] result index list size = {len(result_index_list)}")
     print(f"[debug.log] error rate = {(len(result_index_list) / result_pool_size - 1)*100:.2f}%")
@@ -151,11 +191,14 @@ def lcs_extract(vector_pool, lcs_count_list, max_lcs_size, result_pool_size):
 
     return result_list, result_index_list
 
-def meta_lcs_extract(result_index_list, meta_vector_pool):
+def meta_lcs_extract(result_index_list, meta_vector_pool, lcs_count_list):
     # print(f"[debug.log] result index list:\n{result_index_list}")
     meta_result_list = list()
+    tmp_array = np.ndarray
     for i in range(len(result_index_list)):
         meta_result_list.append(meta_vector_pool[result_index_list[i]])
+        # print(f"[debug.log]: meta_result_list[i]: {meta_result_list[i]}")
+        meta_result_list[i] = np.append(meta_result_list[i], lcs_count_list[result_index_list[i]])
     return meta_result_list
 
 def main(argv):
@@ -195,18 +238,17 @@ def main(argv):
     target = csv_to_array(targetVector)
     commit_pool = csv_to_array(commitPool)
     print(f"[debug.log] original vector_pool size = {len(vector_pool)}")
-    vector_pool = remove_trailing_commas(vector_pool)
+    processed_vector_pool = remove_trailing_commas(vector_pool)
     clean_change_vector(vector_pool, commit_pool)
-    print(f"[debug.log] changed vector_pool size = {len(vector_pool)}")
+    print(f"[debug.log] changed vector_pool size = {len(processed_vector_pool)}")
     if result_size == 0:
-        result_size = int(len(vector_pool) / 10)
+        result_size = int(len(processed_vector_pool) / 10)
     target = list(target[0])
     
-    lcs_count_list = lcs_count(vector_pool, target)
+    lcs_count_list = lcs_count(processed_vector_pool, target)
     # length of longest common subsequence
-    max_lcs_size = max(lcs_count_list)
     meta_lcs_count = dict()
-    for i in range(max_lcs_size+1):
+    for i in range(100+1):
         meta_lcs_count[i] = lcs_count_list.count(i)
     
     print(f"[debug.log] meta result count: \n{meta_lcs_count.items()}")
@@ -214,9 +256,10 @@ def main(argv):
     # print(f"[debug.log] LCS count list: \n{lcs_count_list}")
 
     array1d_to_csv(result_dir+"lcs_count_list.csv", lcs_count_list)
-    result_pool, result_index_list = lcs_extract(vector_pool, lcs_count_list, max_lcs_size, result_size)
+    result_pool, result_index_list = lcs_extract(processed_vector_pool, lcs_count_list, result_size)
+    array1d_to_csv(result_dir+"result_index_list.csv", result_index_list)
 
-    meta_result_list = meta_lcs_extract(result_index_list, commit_pool)
+    meta_result_list = meta_lcs_extract(result_index_list, commit_pool, lcs_count_list)
 
     # print(f"[debug.log] commit id and file path:\n{meta_result_list}")
     # print(f"[debug.log] result pool: \n{result_pool}")

@@ -1,13 +1,15 @@
 #!/bin/bash
 
 cd result
-if [ -f "*.csv" ]; then
-   rm *.csv
-fi
+#if [ -f "*.csv" ]; then
+   rm -rf *.csv
+#fi
 
-if [ -f "*.txt" ]; then
-   rm *.txt
-fi
+#if [ -f "*.txt" ]; then
+   rm -rf *.txt
+#fi
+
+cd ..
 
 if [ -d "pool" ]; then
    echo "pool already exists"
@@ -23,4 +25,4 @@ else
 fi
 
 cd ..
-python main.py -g jsoup_gumtree_vector.csv -c jsoup_commit_file.csv -t testVector.csv
+python3 main.py -g jsoup_gumtree_vector.csv -c jsoup_commit_file.csv -t testVector.csv > result/log.txt
