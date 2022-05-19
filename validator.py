@@ -26,8 +26,11 @@ def seperate_commit_id_and_path(result_array):
         lcs_count_list.append(result_array[i][4])
     return commit_id_before_list, commit_id_after_list, file_path_before_list, file_path_after_list, lcs_count_list
 
-def top_n_to_diffs(project, commit_id_before_list, commit_id_after_list, file_path_before_list, file_path_after_list, lcs_count_list, git_dir, n):
+def top_n_to_diffs(project, commit_id_before_list, commit_id_after_list, file_path_before_list, file_path_after_list, lcs_count_list, git_dir, n, candidate_result_dir=None):
     pwd = os.getcwd()
+    candidate_dir = candidate_result_dir
+    if candidate_result_dir == None:
+        candidate_dir = pwd+"/candidates/"
     for i in range(n):
         if file_path_before_list[i] == file_path_after_list[i]:
             try:
@@ -38,11 +41,11 @@ def top_n_to_diffs(project, commit_id_before_list, commit_id_after_list, file_pa
                 print(f"[debug.log] > Project           : {project}")
                 print(f"[debug.log] > CommitID before   : {commit_id_before_list[i]}")
                 print(f"[debug.log] > Path              : {file_path_before_list[i]}")
-                call(f"cd {git_dir}\ngit checkout -f {commit_id_before_list[i]}; cp {git_dir}/{file_path_before_list[i]} {pwd}/candidates/{project}_rank_{i}_old.java", shell=True)
+                call(f"cd {git_dir}\ngit checkout -f {commit_id_before_list[i]}; cp {git_dir}/{file_path_before_list[i]} {candidate_dir}{project}_rank_{i}_old.java", shell=True)
 
                 print(f"[debug.log] > CommitID after    : {commit_id_after_list[i]}")
                 print(f"[debug.log] > Path              : {file_path_after_list[i]}")
-                call(f"cd {git_dir}\ngit checkout -f {commit_id_after_list[i]}; cp {git_dir}/{file_path_before_list[i]} {pwd}/candidates/{project}_rank_{i}_new.java", shell=True)
+                call(f"cd {git_dir}\ngit checkout -f {commit_id_after_list[i]}; cp {git_dir}/{file_path_before_list[i]} {candidate_dir}{project}_rank_{i}_new.java", shell=True)
                 print(f"[debug.log] resetting the git header to current HEAD ...")
                 call(f"cd {git_dir}\ngit reset --hard HEAD\n")
 
@@ -54,13 +57,14 @@ def top_n_to_diffs(project, commit_id_before_list, commit_id_after_list, file_pa
 
 def main(argv):
     try:
-        opts, args = getopt.getopt(argv[1:], "h:f:d:n:", ["help", "file", "directory", "number"])
+        opts, args = getopt.getopt(argv[1:], "h:f:d:n:rL", ["help", "file", "directory", "number","resultDirectory"])
     except getopt.GetoptError as err:
         print(err)
         sys.exit(2)
     file = ''
     gitdir = ''
     n = 0
+    candidates = ''
     for o, a in opts:
         if o in ("-H", "--help") or o in ("-h", "--hash"):
             print("")
@@ -71,6 +75,8 @@ def main(argv):
             gitdir = a
         elif o in ("-n", "--number"):
             n = int(a)
+        elif o in ("-r", "--resultDirectory"):
+            candidates = a
         else:
             assert False, "unhandled option"
 
