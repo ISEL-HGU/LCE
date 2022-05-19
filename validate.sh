@@ -1,8 +1,9 @@
 cd result
-
-#if [ -f *.txt ]; then
-    rm -rf *.txt
-#fi
-
+rm -rf diff*.txt
 cd ..
-python3 validator.py -f meta_resultPool.csv -d jsoup -n 10
+
+cd candidates
+rm -rf *.java
+cd ..
+
+python3 validator.py -f meta_resultPool.csv -d jsoup -n 10 >> result/log.txt

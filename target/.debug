@@ -1,0 +1,15 @@
+target vector
+69,243,316,338,316,272,316,73,168,102
+
+target changed source code
+diff --git a/src/test/java/org/jsoup/helper/HttpConnectionTest.java b/src/test/java/org/jsoup/helper/HttpConnectionTest.java
+index c5353956..41dd6f37 100644
+--- a/src/test/java/org/jsoup/helper/HttpConnectionTest.java
++++ b/src/test/java/org/jsoup/helper/HttpConnectionTest.java
+@@ -165,6 +164,0 @@ public class HttpConnectionTest {
+-
+-    @Test public void requestBody() {
+-        Connection con = HttpConnection.connect("http://example.com/");
+-        con.requestBody("foo");
+-        assertEquals("foo", con.request().requestBody());
+-    }

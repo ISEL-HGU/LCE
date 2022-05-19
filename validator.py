@@ -26,13 +26,26 @@ def seperate_commit_id_and_path(result_array):
         lcs_count_list.append(result_array[i][4])
     return commit_id_before_list, commit_id_after_list, file_path_before_list, file_path_after_list, lcs_count_list
 
-def top_n_to_diffs(commit_id_before_list, commit_id_after_list, file_path_before_list, file_path_after_list, lcs_count_list, git_dir, n):
+def top_n_to_diffs(project, commit_id_before_list, commit_id_after_list, file_path_before_list, file_path_after_list, lcs_count_list, git_dir, n):
     pwd = os.getcwd()
     for i in range(n):
         if file_path_before_list[i] == file_path_after_list[i]:
             try:
+                print(f"[debug.log] Generating patch candidate #{i}")
+                print(f"[debug.log] Extracting git diff files ...")
                 call(f"cd {git_dir}\ngit diff --output={pwd}/result/diff_{lcs_count_list[i]}_{i+1}.txt --unified=0 {commit_id_before_list[i]} {commit_id_after_list[i]} -- {file_path_before_list[i]}",shell=True)
-                print(f"\n[execution.log] cd {git_dir}\n[execution.log] git diff --output={pwd}/result/diff_{lcs_count_list[i]}_{i+1}.txt --unified=0 {commit_id_before_list[i]} {commit_id_after_list[i]} -- {file_path_before_list[i]}")
+
+                print(f"[debug.log] > Project           : {project}")
+                print(f"[debug.log] > CommitID before   : {commit_id_before_list[i]}")
+                print(f"[debug.log] > Path              : {file_path_before_list[i]}")
+                call(f"cd {git_dir}\ngit checkout -f {commit_id_before_list[i]}; cp {git_dir}/{file_path_before_list[i]} {pwd}/candidates/{project}_rank_{i}_old.java", shell=True)
+
+                print(f"[debug.log] > CommitID after    : {commit_id_after_list[i]}")
+                print(f"[debug.log] > Path              : {file_path_after_list[i]}")
+                call(f"cd {git_dir}\ngit checkout -f {commit_id_after_list[i]}; cp {git_dir}/{file_path_before_list[i]} {pwd}/candidates/{project}_rank_{i}_new.java", shell=True)
+                print(f"[debug.log] resetting the git header to current HEAD ...")
+                call(f"cd {git_dir}\ngit reset --hard HEAD\n")
+
             except:
                 print(f"[debug.log] exception occured: {sys.exc_info()[0]}")
         else:
@@ -65,12 +78,13 @@ def main(argv):
     pool_dir = "pool/"
 
     file = result_dir + file
+    project = gitdir
     git_dir = os.getcwd() + "/" + pool_dir + gitdir
 
     result_array = csv_to_array(file)
     print(f"[debug.log] result array length : {len(result_array)}")
     commit_id_before_list, commit_id_after_list, file_path_before_list, file_path_after_list, lcs_count_list = seperate_commit_id_and_path(result_array)
-    top_n_to_diffs(commit_id_before_list, commit_id_after_list, file_path_before_list, file_path_after_list, lcs_count_list, git_dir, n)
+    top_n_to_diffs(project, commit_id_before_list, commit_id_after_list, file_path_before_list, file_path_after_list, lcs_count_list, git_dir, n)
     # print(f"[debug.log] commit_id_before_list length : {len(commit_id_before_list)}")
     # print(f"[debug.log] commit_id_after_list length : {len(commit_id_after_list)}")
     # print(f"[debug.log] file_path_before_list length : {len(file_path_before_list)}")

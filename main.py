@@ -7,12 +7,12 @@ import pandas as pd
 from keras.preprocessing.sequence import pad_sequences
 
 # find longest common subsequence of target vector within vector pool
-def lcs(vector_pool, target_vector):
+def lcs(vector_pool, target_vector, index = -1):
     len_vp = len(vector_pool)
     # print("[debug.log] length vector pool = %d"% (len_vp))
     len_tv = len(target_vector)
     # print("[debug.log] length target vector = %d" % (len_tv))
-    return lcs_algo(vector_pool, target_vector, len_vp, len_tv)
+    return lcs_algo(vector_pool, target_vector, len_vp, len_tv, index)
 
 def int_array_equal(a, b):
     a = a.strip()
@@ -23,8 +23,49 @@ def int_array_equal(a, b):
         if int(a[i]) != int(b[i]):
             return False
     return True
+
+def try_integer(s):
+    if not s:
+        return s
+    try:
+        f = float(s)
+        i = int(f)
+        return i if f == i else f
+    except ValueError:
+        return s
+
+def backtrack(vector_pol, target_vector, lcs_map, y, x):
+    dropped_sequence_length_list = [0 for _ in range(lcs_map[y][x] + 1)]
+    result_vector = [0 for _ in range(index+1)]
+    result_vector[index] = 0
+    i = y
+    j = x
+
+    while i > 0 and j > 0:
+        # print(f"[debug.log] vector_pool[i-1] = {vector_pool[i-1]}, target_vector[j-1] = {target_vector[j-1]}")
+        if vector_pool[i-1] == target_vector[j-1]:
+            #print(f"[debug.log] switch 1")
+            result_vector[index-1] = int(vector_pool[i-1])
+            i -= 1
+            j -= 1
+            index -= 1
+        elif L[i-1][j] > L[i][j-1]:
+            #print(f"[debug.log] switch 2")
+            dropped_sequence_length_list[index] += 1
+            i -= 1
+        else:
+            #print(f"[debug.log] switch 3")
+            j -= 1
+    if i > 0:
+        dropped_sequence_length_list[index] += i
+    if result_vector[len(result_vector)-1]==0:
+        result_vector = result_vector[:-1]
+    return dropped_sequence_length_list
+
 # Longest Common Sequence algorithm
-def lcs_algo(vector_pool, target_vector, len_vp, len_tv):
+def lcs_algo(vector_pool, target_vector, len_vp, len_tv, lineindex = -1):
+    debug_target = -1
+    offset = 65
     score = 1
     L = [[0 for x in range(len_tv+1)] for y in range(len_vp+1)]
     for i in range(len_vp+1):
@@ -32,42 +73,75 @@ def lcs_algo(vector_pool, target_vector, len_vp, len_tv):
             if i == 0 or j == 0:
                 L[i][j] = 0
             elif vector_pool[i-1] == target_vector[j-1]:
+                # print(f"[debug.log] vector_pool[i-1] = {vector_pool[i-1]}, target_vector[j-1] = {target_vector[j-1]}")
                 L[i][j] = L[i-1][j-1] + 1
             else:
                 L[i][j] = max(L[i-1][j], L[i][j-1])
-
+    if lineindex == debug_target-65+offset:
+        print(f"[debug.log] debug target line index = {lineindex}")
+        print(f"[debug.log] L mapped")
+        for iter in range(len_vp):
+            print(f"[debug.log] {L[iter]}")
     index = L[len_vp][len_tv]
 
-    result_vector = [0] * (index+1)
+    result_vector = [0 for _ in range(index+1)]
     result_vector[index] = 0
     i = len_vp
     j = len_tv
     dropped_sequence_length_list = [0 for _ in range(index+1)]
     while i > 0 and j > 0:
-        if vector_pool[i-1] == target_vector[j-1]:
-            result_vector[index-1] = vector_pool[i-1]
+        # print(f"[debug.log] vector_pool[i-1] = {vector_pool[i-1]}, target_vector[j-1] = {target_vector[j-1]}")
+        #if L[i-1][j] == L[i][j]:
+        #    dropped_sequence_length_list[index] += 1
+        #    i -= 1
+        if L[i-1][j] > L[i][j-1]:
+            dropped_sequence_length_list[index] += 1
+            i -= 1
+        elif vector_pool[i-1] == target_vector[j-1]:
+            #print(f"[debug.log] switch 1")
+            result_vector[index-1] = int(vector_pool[i-1])
             i -= 1
             j -= 1
             index -= 1
-        elif L[i-1][j] > L[i][j-1]:
-            dropped_sequence_length_list[index] += 1
-            i -= 1
         else:
+            #print(f"[debug.log] switch 3")
             j -= 1
+    if i > 0:
+        dropped_sequence_length_list[index] += i
     if result_vector[len(result_vector)-1]==0:
         result_vector = result_vector[:-1]
-    dropped_sequence_length_list.pop(0)
-    if len(dropped_sequence_length_list) != 0:
-        dropped_sequence_length_list.pop() # n_i in range n_1 to n_m-1
+    if lineindex == debug_target-65+offset:
+        print(f"[debug.log] dropped_sequence_length_list = {dropped_sequence_length_list}")
+        print(f"[debug.log] result_vector = {result_vector}")
+        sigma = (len_vp == sum(dropped_sequence_length_list) + len(result_vector))
+        print(f"[debug.log] sigma result = {len_vp} == {sum(dropped_sequence_length_list) + len(result_vector)} = {sigma}")
+    
+    # n_i in range n_1 to n_m-1
+    trim_1_to_m = dropped_sequence_length_list[1:]
+    trim_1_to_m_min_1 = trim_1_to_m[:-1]
 
-    score = 1 * len(result_vector) / len_tv # score = 1 * k / k_max
-    print(f"[debug.log] score = 1 * {len(result_vector)} / {len_tv} = {score}")
-    print(f"[debug.log] target vector = {target_vector}")
-    print(f"[debug.log] pool vector = {vector_pool}")
+    score = 1 # score = 1
     if(len_vp - len(result_vector) > 0):
-        score -= sum(dropped_sequence_length_list) / (len_vp - len(result_vector)) # score -= sum(dropped_sequence_length_list) / (N - k)
-        print(f"[debug.log] score -= {sum(dropped_sequence_length_list)} / {(len_vp - len(result_vector))} = {score}")
-
+        score -= sum(trim_1_to_m_min_1) / (len_vp - len(result_vector)) # score -= sum(dropped_sequence_length_list) / (N - k)
+        # print(f"[debug.log] score -= {sum(dropped_sequence_length_list)} / {(len_vp - len(result_vector))} = {score}")
+    score = score * len(result_vector) / len_tv # score *= k / k_max
+    # print(f"[debug.log] score *= {len(result_vector)} / {len_tv} = {score}")
+    if lineindex == debug_target-65+offset:
+        if len_vp >= len_tv:
+            print(f"[debug.log] case 1: target <= pool")
+        else:
+            print(f"[debug.log] case 2: target > pool")
+        
+        print(f"[debug.log] index = {lineindex}")
+        print(f"[debug.log] target vector = {target_vector}")
+        print(f"[debug.log] pool vector = {vector_pool}")
+        print(f"[debug.log] result_vector = {result_vector}")
+        print(f"[debug.log] dropped sequence length list = {dropped_sequence_length_list}")
+        print(f"[debug.log] score -= {sum(trim_1_to_m_min_1)} / {(len_vp - len(result_vector))}")
+        print(f"[debug.log] score *= {len(result_vector)} / {len_tv}")
+        print(f"[debug.log] calculated score = {score}")
+        
+        
     return result_vector, score
 
 # write in result path the given vector list as csv file
@@ -92,6 +166,9 @@ def csv_to_array(pool_cv):
     f_pool_cv = open(pool_cv, 'r')
     vector_pool = csv.reader(f_pool_cv)
     vector_pool = np.asarray(list(vector_pool))
+    # print(f"[debug.log] type(vector_pool) = {type(vector_pool)}")
+    # print(f"[debug.log] vector_pool.shape = {vector_pool.shape}")
+    # print(f"[debug.log] vector_pool.dtype = {vector_pool.dtype}")
     return vector_pool
 
 # remove trailing commas at the end of each row of csv files
@@ -106,39 +183,45 @@ def remove_trailing_commas(vector):
     return trimmed
 
 # remove empty new lines in change vector array and meta vector array
-def remove_empty_line(vector, metavector):
-    target = np.where(vector.size <= 0)
-    print(f"[debug.log] removing empty line ... vector[target] = {vector[target]}")
+def synchro_line_remove(vector, metavector, target_index):
+    # print(f"[debug.log] empty line index = {target_index}")
+    # print(f"[debug.log] removing empty line ... vector[target] = {vector[target_index]}")
    
-    np.delete(vector, target, axis=None)
+    vector = np.delete(vector, target_index)
     # np.delete(vector, index, axis=None)
-    print(f"[debug.log] removing empty line ... metavector[target] = {metavector[target]}")
-    np.delete(metavector, target, axis=None)
+    metavector = np.delete(metavector, target_index, axis=0)
     # np.delete(metavector, index, axis=None)
+    return vector, metavector
 
 # locate empty new lines in change vector array and meta vector file array
 def locate_nearest_empty_line(vector):
-    # np.where(, 0, vector)
     for i in range(len(vector)):
         if len(vector[i]) <= 0:
+            # print(f"[debug.log] located line: {i+1}")
             return i
 
 # locate and remove empty lines in change vector array and meta vector array
 def clean_change_vector(vector_pool, metavector):
-    remove_empty_line(vector_pool, metavector)
-    # for i in range(len(vector_pool)):
-    #     if i == len(vector_pool):
-    #         break
-    #     locate_nearest_empty_line(vector_pool)
+    target = None
+    # print(f"[debug.log] before metavector size= {len(metavector)}")
+    for i in range(len(vector_pool)):
+        target = locate_nearest_empty_line(vector_pool)
+        if target == None:
+            print(f"[debug.log] removed {i} empty lines from vector pool")
+            break
+        # print(f"[debug.log] empty line index = {target+i+1}")
+        vector_pool, metavector = synchro_line_remove(vector_pool, metavector, target)
+    # print(f"[debug.log] processed metavector = {len(metavector)}")
+    return vector_pool, metavector
         
 
 # return result list of lcs length of each row from vector pool
 def lcs_count(processed_vector_pool, targetVector):
     result_list = list()
     for i in range(len(processed_vector_pool)):
-        lcs_result, lcs_score = lcs(processed_vector_pool[i], targetVector)
-        if lcs_score == 1:
-            print(f"[debug.log] lcs result {i} = {lcs_result}")
+        lcs_result, lcs_score = lcs(list(map(try_integer, processed_vector_pool[i])),list(map(try_integer, targetVector)), i)
+        #if lcs_score == 1:
+        #    print(f"[debug.log] lcs result {i} = {lcs_result}")
         lcs_score = int(lcs_score*100)
         result_list.append(lcs_score)
     return result_list
@@ -237,9 +320,10 @@ def main(argv):
     vector_pool = csv_to_array(gumtreeVector)
     target = csv_to_array(targetVector)
     commit_pool = csv_to_array(commitPool)
+    # print(f"[debug.log] commit pool= {commit_pool}")
     print(f"[debug.log] original vector_pool size = {len(vector_pool)}")
     processed_vector_pool = remove_trailing_commas(vector_pool)
-    clean_change_vector(vector_pool, commit_pool)
+    processed_vector_pool, commit_pool = clean_change_vector(processed_vector_pool, commit_pool)
     print(f"[debug.log] changed vector_pool size = {len(processed_vector_pool)}")
     if result_size == 0:
         result_size = int(len(processed_vector_pool) / 10)
