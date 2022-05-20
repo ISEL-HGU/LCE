@@ -29,7 +29,7 @@ def seperate_commit_id_and_path(result_array):
 def top_n_to_diffs(project, commit_id_before_list, commit_id_after_list, file_path_before_list, file_path_after_list, lcs_count_list, git_dir, n, candidate_result_dir=None):
     pwd = os.getcwd()
     candidate_dir = candidate_result_dir
-    if candidate_result_dir == None:
+    if candidate_dir == None or candidate_dir == '':
         candidate_dir = pwd+"/candidates/"
     for i in range(n):
         if file_path_before_list[i] == file_path_after_list[i]:
@@ -57,7 +57,7 @@ def top_n_to_diffs(project, commit_id_before_list, commit_id_after_list, file_pa
 
 def main(argv):
     try:
-        opts, args = getopt.getopt(argv[1:], "h:f:d:n:rL", ["help", "file", "directory", "number","resultDirectory"])
+        opts, args = getopt.getopt(argv[1:], "h:f:d:n:r:i:", ["help", "file", "directory", "number","resultDirectory", "hashID"])
     except getopt.GetoptError as err:
         print(err)
         sys.exit(2)
@@ -65,6 +65,7 @@ def main(argv):
     gitdir = ''
     n = 0
     candidates = ''
+    hash = ''
     for o, a in opts:
         if o in ("-H", "--help") or o in ("-h", "--hash"):
             print("")
@@ -77,6 +78,8 @@ def main(argv):
             n = int(a)
         elif o in ("-r", "--resultDirectory"):
             candidates = a
+        elif o in ("-h", "--hashID")
+            hash = a
         else:
             assert False, "unhandled option"
 
@@ -90,7 +93,7 @@ def main(argv):
     result_array = csv_to_array(file)
     print(f"[debug.log] result array length : {len(result_array)}")
     commit_id_before_list, commit_id_after_list, file_path_before_list, file_path_after_list, lcs_count_list = seperate_commit_id_and_path(result_array)
-    top_n_to_diffs(project, commit_id_before_list, commit_id_after_list, file_path_before_list, file_path_after_list, lcs_count_list, git_dir, n)
+    top_n_to_diffs(project, commit_id_before_list, commit_id_after_list, file_path_before_list, file_path_after_list, lcs_count_list, git_dir, n, candidates)
     # print(f"[debug.log] commit_id_before_list length : {len(commit_id_before_list)}")
     # print(f"[debug.log] commit_id_after_list length : {len(commit_id_after_list)}")
     # print(f"[debug.log] file_path_before_list length : {len(file_path_before_list)}")

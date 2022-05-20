@@ -24,4 +24,4 @@ cd ..
 cd candidates
 rm -rf *.java
 cd ..
-python3 validator.py -f meta_resultPool.csv -d jsoup -n 100 >> result/log.txt
+python3 validator.py -f meta_resultPool.csv -d jsoup -n 10 -r /home/codemodel/leshen/APR/ >> result/log.txt
