@@ -18,19 +18,23 @@ def seperate_commit_id_and_path(result_array):
     file_path_before_list = list()
     file_path_after_list = list()
     lcs_count_list = list()
+    url_list = list()
     for i in range(len(result_array)):
         commit_id_before_list.append(result_array[i][0])
         commit_id_after_list.append(result_array[i][1])
         file_path_before_list.append(result_array[i][2])
         file_path_after_list.append(result_array[i][3])
         lcs_count_list.append(result_array[i][4])
-    return commit_id_before_list, commit_id_after_list, file_path_before_list, file_path_after_list, lcs_count_list
+        if len(result_array[i]) > 6:
+            url_list.append(result_array[i][5])
+    return commit_id_before_list, commit_id_after_list, file_path_before_list, file_path_after_list, lcs_count_list, url_list
 
-def top_n_to_diffs(project, commit_id_before_list, commit_id_after_list, file_path_before_list, file_path_after_list, lcs_count_list, git_dir, n, candidate_result_dir=None):
+def top_n_to_diffs(project, commit_id_before_list, commit_id_after_list, file_path_before_list, file_path_after_list, lcs_count_list, git_dir, n, candidate_result_dir=None, url_list=None):
     pwd = os.getcwd()
     candidate_dir = candidate_result_dir
     if candidate_dir == None or candidate_dir == '':
         candidate_dir = pwd+"/candidates/"
+
     for i in range(n):
         if file_path_before_list[i] == file_path_after_list[i]:
             try:
@@ -41,11 +45,13 @@ def top_n_to_diffs(project, commit_id_before_list, commit_id_after_list, file_pa
                 print(f"[debug.log] > Project           : {project}")
                 print(f"[debug.log] > CommitID before   : {commit_id_before_list[i]}")
                 print(f"[debug.log] > Path              : {file_path_before_list[i]}")
-                call(f"cd {git_dir}\ngit checkout -f {commit_id_before_list[i]}; cp {git_dir}/{file_path_before_list[i]} {candidate_dir}{project}_rank_{i}_old.java", shell=True)
+                print(f"cd {git_dir}\ngit checkout -f {commit_id_before_list[i]}; cp {git_dir}/{file_path_before_list[i]} {candidate_dir}/{project}_rank-{i}_old.java")
+                call(f"cd {git_dir}\ngit checkout -f {commit_id_before_list[i]}; cp {git_dir}/{file_path_before_list[i]} {candidate_dir}/{project}_rank-{i}_old.java", shell=True)
 
                 print(f"[debug.log] > CommitID after    : {commit_id_after_list[i]}")
                 print(f"[debug.log] > Path              : {file_path_after_list[i]}")
-                call(f"cd {git_dir}\ngit checkout -f {commit_id_after_list[i]}; cp {git_dir}/{file_path_before_list[i]} {candidate_dir}{project}_rank_{i}_new.java", shell=True)
+                print(f"cd {git_dir}\ngit checkout -f {commit_id_after_list[i]}; cp {git_dir}/{file_path_before_list[i]} {candidate_dir}/{project}_rank-{i}_new.java")
+                call(f"cd {git_dir}\ngit checkout -f {commit_id_after_list[i]}; cp {git_dir}/{file_path_before_list[i]} {candidate_dir}/{project}_rank-{i}_new.java", shell=True)
                 print(f"[debug.log] resetting the git header to current HEAD ...")
                 call(f"cd {git_dir}\ngit reset --hard HEAD\n")
 
@@ -78,8 +84,6 @@ def main(argv):
             n = int(a)
         elif o in ("-r", "--resultDirectory"):
             candidates = a
-        elif o in ("-h", "--hashID")
-            hash = a
         else:
             assert False, "unhandled option"
 
@@ -92,8 +96,8 @@ def main(argv):
 
     result_array = csv_to_array(file)
     print(f"[debug.log] result array length : {len(result_array)}")
-    commit_id_before_list, commit_id_after_list, file_path_before_list, file_path_after_list, lcs_count_list = seperate_commit_id_and_path(result_array)
-    top_n_to_diffs(project, commit_id_before_list, commit_id_after_list, file_path_before_list, file_path_after_list, lcs_count_list, git_dir, n, candidates)
+    commit_id_before_list, commit_id_after_list, file_path_before_list, file_path_after_list, lcs_count_list, url_list = seperate_commit_id_and_path(result_array)
+    top_n_to_diffs(project, commit_id_before_list, commit_id_after_list, file_path_before_list, file_path_after_list, lcs_count_list, git_dir, n, candidates, url_list)
     # print(f"[debug.log] commit_id_before_list length : {len(commit_id_before_list)}")
     # print(f"[debug.log] commit_id_after_list length : {len(commit_id_after_list)}")
     # print(f"[debug.log] file_path_before_list length : {len(file_path_before_list)}")
@@ -101,3 +105,7 @@ def main(argv):
 
 if __name__ == '__main__':
     main(sys.argv)
+
+
+# *_gumtree_vector.csv
+# *_commit_file.csv

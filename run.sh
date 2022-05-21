@@ -1,4 +1,7 @@
 # remove remaining result files from previous run
+# $0 = shell_script, $1 = hash-id, $2 = project-id
+echo "executing "$0" on batch_"$1"_"$2"..."
+
 cd result
 rm -rf *.csv
 rm -rf *.txt
@@ -24,4 +27,4 @@ cd ..
 cd candidates
 rm -rf *.java
 cd ..
-python3 validator.py -f meta_resultPool.csv -d jsoup -n 10 -r /home/codemodel/leshen/APR/ >> result/log.txt
+python3 validator.py -f meta_resultPool.csv -d jsoup -n 50 -r /home/codemodel/leshen/APR/target/$1_$2/outputs/prepare_pool_source >> result/log.txt
