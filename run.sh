@@ -18,7 +18,8 @@ else
    git clone https://github.com/jhy/jsoup
 fi
 cd ..
-python3 main.py -g jsoup_gumtree_vector.csv -c jsoup_commit_file.csv -t testVector.csv > result/log.txt
+python3 main.py -g jsoup_gumtree_vector.csv -c jsoup_commit_file.csv -t targetVector.csv > result/log.txt
+#python3 main.py -g jsoup_gumtree_vector.csv -c jsoup_commit_file.csv -t testVector.csv > result/log.txt
 # remove remaining diff texts
 cd result
 rm -rf diff*.txt
@@ -27,4 +28,4 @@ cd ..
 cd candidates
 rm -rf *.java
 cd ..
-python3 validator.py -f meta_resultPool.csv -d jsoup -n 50 -r /home/codemodel/leshen/APR/target/$1_$2/outputs/prepare_pool_source >> result/log.txt
+python3 validator.py -f meta_resultPool.csv -d jsoup -n 10 -r /home/codemodel/leshen/APR/target/$1/outputs/prepare_pool_source >> result/log.txt

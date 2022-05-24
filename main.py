@@ -182,6 +182,9 @@ def remove_trailing_commas(vector):
         trimmed.append(vector[i])
     return trimmed
 
+def remove_trailing_commas_1d(vector):
+    return np.delete(vector, len(vector)-1)
+
 # remove empty new lines in change vector array and meta vector array
 def synchro_line_remove(vector, metavector, target_index):
     # print(f"[debug.log] empty line index = {target_index}")
@@ -328,7 +331,7 @@ def main(argv):
     if result_size == 0:
         result_size = int(len(processed_vector_pool) / 10)
     target = list(target[0])
-    
+    target = remove_trailing_commas_1d(target)
     lcs_count_list = lcs_count(processed_vector_pool, target)
     # length of longest common subsequence
     meta_lcs_count = dict()
