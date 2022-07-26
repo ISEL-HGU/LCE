@@ -34,7 +34,7 @@ def try_integer(s):
     except ValueError:
         return s
 
-def backtrack(vector_pol, target_vector, lcs_map, y, x):
+def backtrack(vector_pool, target_vector, lcs_map, y, x):
     dropped_sequence_length_list = [0 for _ in range(lcs_map[y][x] + 1)]
     result_vector = [0 for _ in range(index+1)]
     result_vector[index] = 0
@@ -182,6 +182,9 @@ def remove_trailing_commas(vector):
         trimmed.append(vector[i])
     return trimmed
 
+def remove_trailing_commas_1d(vector):
+    return np.delete(vector, len(vector)-1)
+
 # remove empty new lines in change vector array and meta vector array
 def synchro_line_remove(vector, metavector, target_index):
     # print(f"[debug.log] empty line index = {target_index}")
@@ -286,7 +289,7 @@ def meta_lcs_extract(result_index_list, meta_vector_pool, lcs_count_list):
 
 def main(argv):
     try:
-        opts, args = getopt.getopt(argv[1:], "h:g:t:c:r:", ["help", "gumtreeVector", "target","commitPool","resultSize"])
+        opts, args = getopt.getopt(argv[1:], "h:g:t:c:r:", ["help", "gumtreeVector", "target","commitPool","resultDirectory"])
     except getopt.GetoptError as err:
         print(err)
         sys.exit(2)
@@ -294,6 +297,7 @@ def main(argv):
     commitPool = ''
     targetVector = ''
     result_size = 0
+    result_dir = ''
     for o, a in opts:
         if o in ("-H", "--help") or o in ("-h", "--hash"):
             print("")
@@ -302,21 +306,14 @@ def main(argv):
             targetVector = a
         elif o in ("-g", "--gumtreeVector"):
             gumtreeVector = a
-        elif o in ("-r", "--resultSize"):
-            result_size = int(a)
         elif o in ("-c", "--commitPool"):
             commitPool = a
+        elif o in ("-r", "--resultDirectory"):
+            result_dir = a
         else:
             assert False, "unhandled option"
-
-    target_dir = "./target/"
-    result_dir = "./result/"
     
-    
-    targetVector = target_dir+targetVector
-    gumtreeVector = target_dir+gumtreeVector
-    commitPool = target_dir+commitPool
-    print(f"[debug.log] target: {targetVector}, gumtreeVector: {gumtreeVector}, commitPool: {commitPool}, resultSize: {result_size}")
+    print(f"[debug.log] target: {targetVector}, gumtreeVector: {gumtreeVector}, commitPool: {commitPool}, resultDirectory: {result_dir}")
     vector_pool = csv_to_array(gumtreeVector)
     target = csv_to_array(targetVector)
     commit_pool = csv_to_array(commitPool)
@@ -325,10 +322,9 @@ def main(argv):
     processed_vector_pool = remove_trailing_commas(vector_pool)
     processed_vector_pool, commit_pool = clean_change_vector(processed_vector_pool, commit_pool)
     print(f"[debug.log] changed vector_pool size = {len(processed_vector_pool)}")
-    if result_size == 0:
-        result_size = int(len(processed_vector_pool) / 10)
+    result_size = int(len(processed_vector_pool) / 10)
     target = list(target[0])
-    
+    target = remove_trailing_commas_1d(target)
     lcs_count_list = lcs_count(processed_vector_pool, target)
     # length of longest common subsequence
     meta_lcs_count = dict()
@@ -339,17 +335,17 @@ def main(argv):
 
     # print(f"[debug.log] LCS count list: \n{lcs_count_list}")
 
-    array1d_to_csv(result_dir+"lcs_count_list.csv", lcs_count_list)
+    array1d_to_csv(result_dir+"/lcs_count_list.csv", lcs_count_list)
     result_pool, result_index_list = lcs_extract(processed_vector_pool, lcs_count_list, result_size)
-    array1d_to_csv(result_dir+"result_index_list.csv", result_index_list)
+    array1d_to_csv(result_dir+"/result_index_list.csv", result_index_list)
 
     meta_result_list = meta_lcs_extract(result_index_list, commit_pool, lcs_count_list)
 
     # print(f"[debug.log] commit id and file path:\n{meta_result_list}")
     # print(f"[debug.log] result pool: \n{result_pool}")
 
-    array2d_to_csv(result_dir+"meta_resultPool.csv", meta_result_list)
-    array2d_to_csv(result_dir+"resultPool.csv", result_pool)
+    array2d_to_csv(result_dir+"/meta_resultPool.csv", meta_result_list)
+    array2d_to_csv(result_dir+"/resultPool.csv", result_pool)
 
 if __name__ == '__main__':
     main(sys.argv)
