@@ -24,6 +24,8 @@ public class App {
 
     public void run() {
         LCS lcs = new LCS();
+        Extractor extractor = new Extractor(); // TODO: extract from git repo id
+
         int[][] pool_array;
         int[][] vector_array;
         float[] sim_score_array;
