@@ -4,195 +4,154 @@
 package LCE;
 
 import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.FileInputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Scanner;
-import java.util.Vector;
+import java.util.Properties;
+import org.apache.logging.log4j.*;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.Configurator;
 
 public class App {
-    public String pool_dir = "D:\\repository_d\\LCE\\target\\jsoup_gumtree_vector.csv";
-    public String vector_dir = "D:\\repository_d\\LCE\\target\\testVector.csv";
-    public String meta_pool_dir = "D:\\repository_d\\LCE\\target\\jsoup_commit_file.csv";
-    public String result_dir = "D:\\repository_d\\LCE\\result";
+    public static final String ANSI_RESET = "\u001B[0m";
+    public static final String ANSI_BLACK = "\u001B[30m";
+    public static final String ANSI_RED = "\u001B[31m";
+    public static final String ANSI_GREEN = "\u001B[32m";
+    public static final String ANSI_YELLOW = "\u001B[33m";
+    public static final String ANSI_BLUE = "\u001B[34m";
+    public static final String ANSI_PURPLE = "\u001B[35m";
+    public static final String ANSI_CYAN = "\u001B[36m";
+    public static final String ANSI_WHITE = "\u001B[37m";
+
+    static Logger appLogger = LogManager.getLogger(App.class.getName());
 
     public static void main(String[] args) {
+        Configurator.setLevel(App.class, Level.TRACE);
+        appLogger.info(ANSI_YELLOW + "==========================================================" + ANSI_RESET);
+        appLogger.info(ANSI_YELLOW + "[status] App Initiated" + ANSI_RESET);
         App main = new App();
-        main.run();
+        Properties argv = args.length == 0 ? main.loadProperties() : main.loadProperties(args[0]);
+        if (argv == null) {
+            appLogger.fatal(ANSI_RED + "[fatal] > Properties file not found" + ANSI_RESET);
+            System.exit(1);
+        } else {
+            appLogger.info(ANSI_YELLOW + "[status] Properties file loaded" + ANSI_RESET);
+            appLogger.info(ANSI_YELLOW + "[status] running LCE" + ANSI_RESET);
+            main.run(argv);
+        }
     }
 
-    public void run() {
-        LCS lcs = new LCS();
-        Extractor extractor = new Extractor(); // TODO: extract from git repo id
+    public void run(Properties properties) {
+        String spi_path = properties.getProperty("SPI.dir"); // path for SimilarPatchIdentifier project
 
-        int[][] pool_array;
-        int[][] vector_array;
-        float[] sim_score_array;
-        List<List<String>> meta_pool_list = new ArrayList<>();
-        Vector<Integer> index_list_to_remove = new Vector<Integer>();
+        Extractor extractor = new Extractor(properties); // Extractor for extracting candidate source codes
+        GitLoader gitLoader = new GitLoader(); // GitLoader for loading source code from git
 
+        // initiate extractor with properties
+        appLogger.trace(ANSI_BLUE + "[status] > running executor..." + ANSI_RESET);
+        extractor.run();
+        appLogger.trace(ANSI_GREEN + "[status] > extractor ready" + ANSI_RESET);
+        List<String> result = extractor.extract();
+        appLogger.trace(ANSI_GREEN + "[status] > extraction done" + ANSI_RESET);
+
+        // preprocess the results from extractor before next step
+        List<String[]> preprocessed = preprocess(result);
+        appLogger.trace(ANSI_GREEN + "[status] > preprocess success" + ANSI_RESET);
+
+        // variable init
+        String pool_dir = properties.getProperty("pool.dir");
+        String candidates_dir = properties.getProperty("candidates.dir");
+
+        // setup for git loader to load source from git
+        gitLoader.set(pool_dir, candidates_dir); // argv
+
+        boolean doClean = properties.getProperty("doClean").equals("true");
+
+        // DEBUG : to clean the output directory and generate
+        // gitignore files
+        if (doClean) {
+            appLogger.trace(ANSI_BLUE + "[status] > cleaning result and candidate directory" + ANSI_RESET);
+            gitLoader.purge();
+            appLogger.trace(ANSI_GREEN + "[status] > cleaning done" + ANSI_RESET);
+            appLogger.trace(ANSI_BLUE + "[status] > copying gitignore file to result directory and candidate directory"
+                    + ANSI_RESET);
+            gitLoader.copy(spi_path + "/core/LCE/gitignore/.gitignore",
+                    pool_dir + ".gitignore"); // argv
+            gitLoader.copy(spi_path + "/core/LCE/gitignore/.gitignore",
+                    candidates_dir + ".gitignore"); // argv
+            appLogger.trace(ANSI_GREEN + "[status] > gitignore file copied" + ANSI_RESET);
+        }
+
+        appLogger.trace(ANSI_BLUE + "[status] > Initiating gitLoader" + ANSI_RESET);
+
+        // retreive candidate source codes from each git repositories extracted as
+        // similar patch cases up to given limit (default : 10)
+        int counter = 0;
+        for (String[] line : preprocessed) {
+            gitLoader.getCounter(counter);
+
+            String git_url = line[4];
+            String cid_before = line[0];
+            String cid_after = line[1];
+            String filepath_before = line[2];
+            String filepath_after = line[3];
+            String d4j_name = properties.getProperty("d4j_project_name");
+            int d4j_num = Integer.parseInt(properties.getProperty("d4j_project_num"));
+            appLogger.trace(ANSI_GREEN + "[candidate metadata] > filepath after : " + filepath_after
+                    + ", git repository url : "
+                    + git_url + ", defects4j project : " + d4j_name + "-" + properties.getProperty("d4j_project_num")
+                    + ANSI_RESET);
+
+            gitLoader.config(git_url, cid_before, cid_after, filepath_before, filepath_after, d4j_name, d4j_num);
+            gitLoader.run();
+            try {
+                if (gitLoader.load()) {
+                    appLogger.trace(ANSI_GREEN + "[status] > gitLoader load success" + ANSI_RESET);
+                } else {
+                    appLogger.fatal(ANSI_RED + "[fatal] > gitLoader load failed" + ANSI_RESET);
+                }
+            } catch (Exception e) {
+                appLogger.fatal(ANSI_RED + "[fatal] > Exception :" + e.getMessage() + ANSI_RESET);
+            }
+            counter++;
+        }
+        appLogger.trace(ANSI_GREEN + "[status] > gitLoader done" + ANSI_RESET);
+        appLogger.info(ANSI_YELLOW + "==========================================================" + ANSI_RESET);
+        appLogger.info(ANSI_YELLOW + "[status] > App done" + ANSI_RESET);
+        System.exit(0);
+    }
+
+    private List<String[]> preprocess(List<String> result) {
+        List<String[]> result_split = new ArrayList<>();
         try {
-            pool_array = list_to_int_array2d(CSV_to_ArrayList(pool_dir));
-            System.out.println("[debug] original pool array size = " + pool_array.length);
-
-            meta_pool_list = CSV_to_ArrayList(meta_pool_dir);
-            System.out.println("[debug] meta pool list size = " + meta_pool_list.size());
-
-            int[][] cleaned_pool_array = remove_empty_lines(pool_array, index_list_to_remove);
-            List<List<String>> cleaned_meta_pool_list = sync_removal(meta_pool_list, index_list_to_remove);
-            System.out.println("[debug] cleaned pool array size = " + cleaned_pool_array.length);
-            System.out.println("[debug] index_list_to_remove size : " + index_list_to_remove.size());
-            System.out.println("[debug] cleaned meta pool list size = " + cleaned_meta_pool_list.size());
-
-            vector_array = list_to_int_array2d(CSV_to_ArrayList(vector_dir));
-
-            sim_score_array = new float[cleaned_pool_array.length];
-
-            // score similarity on each line of pool and vector
-            for (int i = 0; i < cleaned_pool_array.length; i++) {
-                sim_score_array[i] = lcs.ScoreSimilarity(cleaned_pool_array[i], vector_array[0]);
+            for (String line : result) {
+                // System.out.println("[debug] line : " + line);
+                String[] line_split = line.split(",");
+                String[] selection = new String[] { line_split[0], line_split[1], line_split[2], line_split[3],
+                        line_split[4] };
+                result_split.add(selection);
             }
-
-            int[] max_N_index_list = indexesOfTopElements(sim_score_array, 10);
-            System.out.println("[debug] max_N_index_list size = " + max_N_index_list.length);
-            print_array(max_N_index_list);
-
-            for (int i = 0; i < 10; i++) {
-                System.out.println("[debug] target : ");
-                print_array(cleaned_pool_array[max_N_index_list[i]]);
-                System.out.println("[debug] tester : ");
-                print_array(vector_array[0]);
-
-                System.out.println("[debug] max score : " + sim_score_array[max_N_index_list[i]]);
-            }
-
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            System.out.println("[error] > " + e.getMessage());
         }
+        return result_split;
     }
 
-    private List<List<String>> CSV_to_ArrayList(String filename) throws FileNotFoundException {
-        List<List<String>> records = new ArrayList<>();
-        try (Scanner scanner = new Scanner(new File(filename));) {
-            while (scanner.hasNextLine()) {
-                records.add(getRecordFromLine(scanner.nextLine()));
-            }
-        } catch (FileNotFoundException e) {
-            System.out.println("[debug] file not found : " + filename); // DEBUG
-            e.printStackTrace();
-        }
-        return records;
+    public Properties loadProperties() {
+        return loadProperties("../lce.properties");
     }
 
-    private List<String> getRecordFromLine(String line) {
-        List<String> values = new ArrayList<String>();
-        try (Scanner rowScanner = new Scanner(line)) {
-            rowScanner.useDelimiter(",");
-            while (rowScanner.hasNext()) {
-                values.add(rowScanner.next());
-            }
+    public Properties loadProperties(String path) {
+        try {
+            appLogger.trace(ANSI_BLUE + "[status] > loading properties" + ANSI_RESET);
+            File file = new File(path);
+            Properties properties = new Properties();
+            properties.load(new FileInputStream(file));
+            appLogger.trace(ANSI_GREEN + "[status] > properties loaded" + ANSI_RESET);
+            return properties;
+        } catch (Exception e) {
+            appLogger.fatal(ANSI_RED + "[fatal] > Exception : " + e.getMessage() + ANSI_RESET);
+            return null;
         }
-        return values;
-    }
-
-    private int[] array_to_int(String[] array) {
-        int[] converted = new int[array.length];
-        // convert array to int array
-        for (int i = 0; i < array.length; i++) {
-            converted[i] = Integer.parseInt(array[i]);
-        }
-        // return int array
-        return converted;
-    }
-
-    private int[][] list_to_int_array2d(List<List<String>> list) {
-        int[][] array = new int[list.size()][];
-        for (int i = 0; i < list.size(); i++) {
-            array[i] = array_to_int(list.get(i).toArray(new String[list.get(i).size()]));
-        }
-        return array;
-    }
-
-    public void print_array2d(int[][] dp) {
-        for (int i = 0; i < dp.length; i++) {
-            for (int j = 0; j < dp[i].length; j++) {
-                System.out.print(dp[i][j] + " ");
-            }
-            System.out.println();
-        }
-    }
-
-    public void print_arraylist(List<List<String>> dp) {
-        for (int i = 0; i < dp.size(); i++) {
-            for (int j = 0; j < dp.get(i).size(); j++) {
-                System.out.print(dp.get(i).get(j) + " ");
-            }
-            System.out.println();
-        }
-    }
-
-    public void print_array(int[] dp) {
-        for (int i = 0; i < dp.length; i++) {
-            System.out.print(dp[i] + " ");
-        }
-        System.out.println();
-    }
-
-    public void print_list(List<Integer> dp) {
-        for (int i = 0; i < dp.size(); i++) {
-            System.out.print(dp.get(i) + " ");
-        }
-        System.out.println();
-    }
-
-    // locate and remove empty lines in pool
-    private int[][] remove_empty_lines(int[][] pool, Vector<Integer> index_list) {
-        List<int[]> new_pool = new ArrayList<>();
-        for (int i = 0; i < pool.length; i++) {
-            if (pool[i].length != 0) {
-                new_pool.add(pool[i]);
-            } else {
-                index_list.add(i);
-            }
-        }
-        int[][] new_pool_array = new int[new_pool.size()][];
-        for (int i = 0; i < new_pool.size(); i++) {
-            new_pool_array[i] = new_pool.get(i);
-        }
-        return new_pool_array;
-    }
-
-    private List<List<String>> sync_removal(List<List<String>> meta_pool, Vector<Integer> index_list) {
-        List<List<String>> synced_meta_pool = new ArrayList<>();
-        for (int i = 0; i < meta_pool.size(); i++) {
-            if (!index_list.contains(i)) {
-                synced_meta_pool.add(meta_pool.get(i));
-            }
-        }
-        return synced_meta_pool;
-    }
-
-    private void array2d_to_csv(int[][] array, String filename) {
-        // create file with filename as csv file
-        // write array to csv file
-    }
-
-    // find index of top N max values in array and return index list
-    private int[] indexesOfTopElements(float[] orig, int nummax) {
-        float[] copy = Arrays.copyOf(orig, orig.length);
-        Arrays.sort(copy);
-        float[] honey = Arrays.copyOfRange(copy, copy.length - nummax, copy.length);
-        int[] result = new int[nummax];
-        int resultPos = 0;
-        for (int i = 0; i < orig.length; i++) {
-            float onTrial = orig[i];
-            int index = Arrays.binarySearch(honey, onTrial);
-            if (index < 0)
-                continue;
-            if (resultPos < nummax)
-                result[resultPos++] = i;
-        }
-        return result;
     }
 }
